@@ -1,0 +1,1 @@
+C:\UNITY projects\Design Studio M1 Framework\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\RelWithDebInfo\144u3g5n\obj\arm64-v8a
