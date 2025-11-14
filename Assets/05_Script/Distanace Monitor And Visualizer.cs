@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ChildMonitor : MonoBehaviour
+public class CollsionVisualizer : MonoBehaviour
 {
     [Header("要監聽的父物件")]
     public Transform parentObject;
 
-    [Header("Collider 擴張倍率")]
+    [Header("Offset Collider 擴張倍率")]
     public float offsetScale = 1.11f;
 
     [Header("碰撞 Sphere 半徑")]
@@ -21,7 +21,9 @@ public class ChildMonitor : MonoBehaviour
     public string offsetLayerName = "ChildOffset";
 
     private List<GameObject> trackedChildren = new List<GameObject>();
+    private GameObject lastAddedChild = null;
     private bool isCheckingCollisions = false;
+
     private int originLayer;
     private int offsetLayer;
 
@@ -38,23 +40,22 @@ public class ChildMonitor : MonoBehaviour
     {
         if (parentObject == null) return;
 
-        bool hasNewChild = false;
-
         foreach (Transform child in parentObject)
         {
             if (!trackedChildren.Contains(child.gameObject))
             {
                 trackedChildren.Add(child.gameObject);
                 AddOrUpdateColliders(child.gameObject);
-                hasNewChild = true;
+
+                lastAddedChild = child.gameObject;
 
                 Debug.Log($"🟡 New Child Added: {child.name}");
-            }
-        }
 
-        if (hasNewChild && trackedChildren.Count > 1 && !isCheckingCollisions)
-        {
-            StartCoroutine(DelayedCollisionCheck());
+                if (trackedChildren.Count > 1)
+                {
+                    StartCoroutine(DelayedCollisionCheck());
+                }
+            }
         }
     }
 
@@ -64,38 +65,38 @@ public class ChildMonitor : MonoBehaviour
         Vector3 localOffset = new Vector3(-0.01483f, 0.00633f, 0.25f);
         Transform t = obj.transform;
 
-        // origin Collider
+        // origin collider
         BoxCollider origin = obj.transform.Find("originalCollider")?.GetComponent<BoxCollider>();
         if (origin == null)
         {
             GameObject go = new GameObject("originalCollider");
-            go.transform.parent = obj.transform;
-            go.transform.position = t.position;
-            go.transform.rotation = t.rotation;
+            go.transform.SetParent(obj.transform);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+
             origin = go.AddComponent<BoxCollider>();
             origin.size = originSize;
             origin.center = localOffset;
 
-            if (originLayer >= 0 && originLayer <= 31)
-                go.layer = originLayer;
+            if (originLayer >= 0) go.layer = originLayer;
 
             Debug.Log($"🟢 Added Origin Collider to: {obj.name}");
         }
 
-        // offset Collider
+        // offset collider
         BoxCollider offset = obj.transform.Find("offsetCollider")?.GetComponent<BoxCollider>();
         if (offset == null)
         {
             GameObject go = new GameObject("offsetCollider");
-            go.transform.parent = obj.transform;
-            go.transform.position = t.position;
-            go.transform.rotation = t.rotation;
+            go.transform.SetParent(obj.transform);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+
             offset = go.AddComponent<BoxCollider>();
             offset.size = originSize * offsetScale;
             offset.center = localOffset;
 
-            if (offsetLayer >= 0 && offsetLayer <= 31)
-                go.layer = offsetLayer;
+            if (offsetLayer >= 0) go.layer = offsetLayer;
 
             Debug.Log($"🔵 Added Offset Collider to: {obj.name}");
         }
@@ -105,69 +106,77 @@ public class ChildMonitor : MonoBehaviour
     {
         isCheckingCollisions = true;
         yield return null;
-        Debug.Log("🟠 Begin Collision Check");
+
+        Debug.Log("🟠 Begin Collision Check (only newest child)");
         CheckCollisions();
         Debug.Log("🟣 End Collision Check");
+
         isCheckingCollisions = false;
     }
 
     private void CheckCollisions()
     {
-        var processedPairs = new HashSet<(GameObject, GameObject)>();
+        if (lastAddedChild == null) return;
 
-        for (int i = 0; i < trackedChildren.Count; i++)
+        var objA = lastAddedChild;
+        var originA = objA.transform.Find("originalCollider")?.GetComponent<BoxCollider>();
+        var offsetA = objA.transform.Find("offsetCollider")?.GetComponent<BoxCollider>();
+
+        if (originA == null || offsetA == null) return;
+
+        Bounds originABounds = originA.bounds;
+        Bounds offsetABounds = offsetA.bounds;
+
+        // 💡 舊的 child（除了 lastAddedChild）
+        foreach (var objB in trackedChildren)
         {
-            var objA = trackedChildren[i];
-            BoxCollider originA = objA.transform.Find("originalCollider")?.GetComponent<BoxCollider>();
-            BoxCollider offsetA = objA.transform.Find("offsetCollider")?.GetComponent<BoxCollider>();
-            if (originA == null || offsetA == null) continue;
+            if (objB == objA) continue;
 
-            Bounds originABounds = originA.bounds;
-            Bounds offsetABounds = offsetA.bounds;
+            var originB = objB.transform.Find("originalCollider")?.GetComponent<BoxCollider>();
+            var offsetB = objB.transform.Find("offsetCollider")?.GetComponent<BoxCollider>();
 
-            for (int j = i + 1; j < trackedChildren.Count; j++)
+            if (originB == null || offsetB == null) continue;
+
+            Bounds originBBounds = originB.bounds;
+            Bounds offsetBBounds = offsetB.bounds;
+
+            bool originHit = originABounds.Intersects(originBBounds);
+            bool offsetHit = offsetABounds.Intersects(offsetBBounds);
+
+            // 情況 1：origin + offset 都撞 → 只產生 origin
+            if (originHit && offsetHit)
             {
-                var objB = trackedChildren[j];
-                BoxCollider originB = objB.transform.Find("originalCollider")?.GetComponent<BoxCollider>();
-                BoxCollider offsetB = objB.transform.Find("offsetCollider")?.GetComponent<BoxCollider>();
-                if (originB == null || offsetB == null) continue;
+                Vector3 pA = originA.ClosestPoint(originBBounds.center);
+                Vector3 pB = originB.ClosestPoint(originABounds.center);
+                Vector3 pos = (pA + pB) / 2f;
 
-                Bounds originBBounds = originB.bounds;
-                Bounds offsetBBounds = offsetB.bounds;
+                Debug.Log($"🟥(Origin Only) Both Hit: {objA.name} ↔ {objB.name}");
+                SpawnSphere(pos, originMaterial);
+                continue;
+            }
 
-                // ORIGIN 對 ORIGIN
-                if (originABounds.Intersects(originBBounds))
-                {
-                    var pair = (originA.gameObject, originB.gameObject);
-                    var pairRev = (originB.gameObject, originA.gameObject);
+            // 情況 2：只有 origin
+            if (originHit)
+            {
+                Vector3 pA = originA.ClosestPoint(originBBounds.center);
+                Vector3 pB = originB.ClosestPoint(originABounds.center);
+                Vector3 pos = (pA + pB) / 2f;
 
-                    if (!processedPairs.Contains(pair) && !processedPairs.Contains(pairRev))
-                    {
-                        processedPairs.Add(pair);
+                Debug.Log($"🟥 Origin Hit: {objA.name} ↔ {objB.name}");
+                SpawnSphere(pos, originMaterial);
+                continue;
+            }
 
-                        Vector3 contactPos = (originABounds.center + originBBounds.center) / 2f;
-                        Debug.Log($"🟥 Origin Collision: {objA.name} ↔ {objB.name} @ {contactPos}");
+            // 情況 3：只有 offset
+            if (offsetHit)
+            {
+                Vector3 pA = offsetA.ClosestPoint(offsetBBounds.center);
+                Vector3 pB = offsetB.ClosestPoint(offsetABounds.center);
+                Vector3 pos = (pA + pB) / 2f;
 
-                        SpawnSphere(contactPos, originMaterial);
-                    }
-                }
-
-                // OFFSET 對 OFFSET
-                if (offsetABounds.Intersects(offsetBBounds))
-                {
-                    var pair = (offsetA.gameObject, offsetB.gameObject);
-                    var pairRev = (offsetB.gameObject, offsetA.gameObject);
-
-                    if (!processedPairs.Contains(pair) && !processedPairs.Contains(pairRev))
-                    {
-                        processedPairs.Add(pair);
-
-                        Vector3 contactPos = (offsetABounds.center + offsetBBounds.center) / 2f;
-                        Debug.Log($"🟧 Offset Collision: {objA.name} ↔ {objB.name} @ {contactPos}");
-
-                        SpawnSphere(contactPos, offsetMaterial);
-                    }
-                }
+                Debug.Log($"🟧 Offset Hit: {objA.name} ↔ {objB.name}");
+                SpawnSphere(pos, offsetMaterial);
+                continue;
             }
         }
     }

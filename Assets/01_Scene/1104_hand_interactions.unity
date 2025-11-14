@@ -561,7 +561,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   parentObject: {fileID: 536015607}
   offsetScale: 1.5
-  sphereRadius: 0.05
+  sphereRadius: 0.025
   originMaterial: {fileID: 2100000, guid: ba067644c60f0874cbd890451c941408, type: 2}
   offsetMaterial: {fileID: 2100000, guid: b38492706dd762445aaedb2d61833183, type: 2}
   originLayerName: ChildOrigin
