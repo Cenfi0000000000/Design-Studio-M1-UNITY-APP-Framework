@@ -54,16 +54,22 @@ public class HandSpawnManager : MonoBehaviour
         if (!isHandsReady || ovrHand == null)
             return;
 
+        // ------------------ 手指彎曲度 ------------------
+        float thumb = ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Thumb);
+        float index = ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Index);
+        float middle = ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle);
+
+
+
         // 真實手勢偵測
         bool isPinching = ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Index) &&
                           ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Thumb);
 
-        bool isPoking = ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Index) &&
-                         !ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Thumb);
+        bool isPoking = ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Middle) &&
+                          ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Thumb);
 
-        bool isGrabbing = ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Middle) &&
-                           ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Ring) &&
-                           ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Pinky);
+        bool isGrabbing = ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Ring) &&
+                          ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Thumb);
 
         // 🔹 鍵盤模擬（只在 Editor 有效）
 #if UNITY_EDITOR
