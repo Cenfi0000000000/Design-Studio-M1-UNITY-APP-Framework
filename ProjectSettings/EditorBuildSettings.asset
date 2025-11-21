@@ -6,8 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/01_Scene/1104_hand_interactions.unity
+    path: Assets/01_Scene/1122_hand_interactions.unity
     guid: 5169e82405caeb248a36bf381716aa5f
+  - enabled: 0
+    path: "Assets/Samples/Meta XR Interaction \u200BSDK/81.0.0/Example Scenes/PokeExamples.unity"
+    guid: ada3086bde0ab18459589e22d8d9e182
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 8583cfd9346d52b46a72259ccac3c64d, type: 2}

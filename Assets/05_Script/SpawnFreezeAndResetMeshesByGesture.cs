@@ -86,9 +86,9 @@ public class HandSpawnManager : MonoBehaviour
 #endif
 
         // 之後就可以沿用原本的 Pinch / Poke / Grab 邏輯
-        if (isPinching && !wasPinching) SpawnObjectOnHand();
-        if (isPoking && !wasPoking) CopyObjectToParent();
-        if (isGrabbing && !wasGrabbing) ClearAllCopies();
+        if (isPinching && !wasPinching) _SpawnObjectOnHand();
+        if (isPoking && !wasPoking) _CopyObjectToParent();
+        if (isGrabbing && !wasGrabbing) _ClearAllCopies();
 
         wasPinching = isPinching;
         wasPoking = isPoking;
@@ -96,7 +96,7 @@ public class HandSpawnManager : MonoBehaviour
     }
 
 
-    private void SpawnObjectOnHand()
+    public void _SpawnObjectOnHand()
     {
         if (!isHandsReady || objectToSpawn == null || handTransform == null)
             return;
@@ -118,7 +118,7 @@ public class HandSpawnManager : MonoBehaviour
         Debug.Log("🟢 Spawned object on hand!");
     }
 
-    private void CopyObjectToParent()
+    public void _CopyObjectToParent()
     {
         if (spawnedMesh == null || spawnParent == null)
         {
@@ -136,7 +136,7 @@ public class HandSpawnManager : MonoBehaviour
         Debug.Log($"🟡 Copied object to spawnParent: {copy.name}");
     }
 
-    private void ClearAllCopies()
+    public void _ClearAllCopies()
     {
         foreach (var obj in spawnedCopies)
         {
